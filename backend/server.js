@@ -9,9 +9,26 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
+// Allow credentialed requests only from configured frontend origins.
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
+  .split(",").map((origin) => origin.trim().replace(/\/$/, "")).filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS origin not allowed: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+  optionsSuccessStatus: 204
+}));
 app.use(express.json({ limit: "2mb" }));
 app.use("/api/customer", require("./routes/customerAuth"));
+app.use("/api/orders", require("./routes/orders"));
+app.use("/api/delivery", require("./routes/delivery"));
 
 // ================= ADMIN LOGIN =================
 
@@ -47,14 +64,43 @@ app.post("/api/admin/login", async (req, res) => {
     const token = jwt.sign(
       { id: admins[0].id, username: admins[0].username },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "7d" }
     );
 
-    res.json({ success: true, token });
+    res.cookie("admin_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.COOKIE_SAME_SITE || "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/"
+    });
+
+    res.json({
+      success: true,
+      admin: { id: admins[0].id, username: admins[0].username }
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Login failed" });
   }
+});
+
+// Admin session status and logout
+app.get("/api/admin/me", requireAdmin, (req, res) => {
+  res.json({
+    success: true,
+    admin: { id: req.admin.id, username: req.admin.username }
+  });
+});
+
+app.post("/api/admin/logout", (req, res) => {
+  res.clearCookie("admin_session", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.COOKIE_SAME_SITE || "lax",
+    path: "/"
+  });
+  res.json({ success: true, message: "Admin logged out" });
 });
 
 // ================= IMAGE UPLOAD =================
@@ -77,18 +123,26 @@ const upload = multer({
 
 function requireAdmin(req, res, next) {
   const authorization = req.headers.authorization;
+  const bearerToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7)
+    : null;
+  const cookiePart = (req.headers.cookie || "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("admin_session="));
+  const cookieToken = cookiePart
+    ? decodeURIComponent(cookiePart.slice("admin_session=".length))
+    : null;
+  const token = cookieToken || bearerToken;
 
-  if (!authorization?.startsWith("Bearer ")) {
+  if (!token) {
     return res.status(401).json({
       message: "Admin authentication required"
     });
   }
 
   try {
-    const decoded = jwt.verify(
-      authorization.split(" ")[1],
-      process.env.JWT_SECRET
-    );
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decoded.id || !decoded.username) {
       return res.status(401).json({
@@ -276,13 +330,37 @@ app.delete("/api/spec-templates/:id", requireAdmin, async (req, res) => {
 
 // ================= PRODUCTS =================
 
-// Get all products
+// Public product catalogue: unpublished products are hidden from customers.
 app.get("/api/products", async (req, res) => {
   try {
     const [products] = await db.query(`
       SELECT id, name, description, price, image_type, created_at,
-             category, brand, model, sku, mrp, stock_quantity,
+             category, brand, model, sku, mrp, stock_quantity, delivery_charge,
              warranty, specifications
+      FROM products
+      WHERE is_published = 1
+      ORDER BY id DESC
+    `);
+
+    res.json({
+      products: products.map((product) => ({
+        ...product,
+        specifications: parseJson(product.specifications, { sections: [] })
+      }))
+    });
+  } catch (error) {
+    console.error("Fetch products error:", error);
+    res.status(500).json({ message: "Unable to fetch products" });
+  }
+});
+
+// Admin catalogue: includes both published and unpublished products.
+app.get("/api/admin/products", requireAdmin, async (req, res) => {
+  try {
+    const [products] = await db.query(`
+      SELECT id, name, description, price, image_type, created_at,
+             category, brand, model, sku, mrp, stock_quantity, delivery_charge,
+             warranty, specifications, is_published
       FROM products
       ORDER BY id DESC
     `);
@@ -290,18 +368,12 @@ app.get("/api/products", async (req, res) => {
     res.json({
       products: products.map((product) => ({
         ...product,
-        specifications: parseJson(
-          product.specifications,
-          { sections: [] }
-        )
+        specifications: parseJson(product.specifications, { sections: [] })
       }))
     });
   } catch (error) {
-    console.error("Fetch products error:", error);
-
-    res.status(500).json({
-      message: "Unable to fetch products"
-    });
+    console.error("Admin fetch products error:", error);
+    res.status(500).json({ message: "Unable to load admin products" });
   }
 });
 
@@ -310,10 +382,10 @@ app.get("/api/products/:id", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, name, description, price, image_type, created_at,
-              category, brand, model, sku, mrp, stock_quantity,
+              category, brand, model, sku, mrp, stock_quantity, delivery_charge,
               warranty, specifications
        FROM products
-       WHERE id = ?`,
+       WHERE id = ? AND is_published = 1`,
       [req.params.id]
     );
 
@@ -341,24 +413,40 @@ app.get("/api/products/:id", async (req, res) => {
   }
 });
 
-// Get product image
+// Public product image: available only while the product is published.
 app.get("/api/products/:id/image", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT image_data, image_type FROM products WHERE id = ? AND is_published = 1",
+      [req.params.id]
+    );
+    if (!rows.length || !rows[0].image_data) {
+      return res.status(404).send("Image not found");
+    }
+    res.setHeader("Content-Type", rows[0].image_type);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(rows[0].image_data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Image loading failed");
+  }
+});
+
+// Admin product image: allows administrators to preview unpublished products.
+app.get("/api/admin/products/:id/image", requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
       "SELECT image_data, image_type FROM products WHERE id = ?",
       [req.params.id]
     );
-
     if (!rows.length || !rows[0].image_data) {
       return res.status(404).send("Image not found");
     }
-
     res.setHeader("Content-Type", rows[0].image_type);
-    res.setHeader("Cache-Control", "public, max-age=86400");
-
+    res.setHeader("Cache-Control", "private, max-age=3600");
     res.send(rows[0].image_data);
   } catch (error) {
-    console.error(error);
+    console.error("Admin product image error:", error);
     res.status(500).send("Image loading failed");
   }
 });
@@ -368,7 +456,7 @@ app.post("/api/products", requireAdmin, upload.single("image"), async (req, res)
   try {
     const {
       name, description, price, category, brand, model, sku,
-      mrp, stock_quantity, warranty
+      mrp, stock_quantity, warranty, delivery_charge
     } = req.body;
 
     if (
@@ -415,12 +503,22 @@ app.post("/api/products", requireAdmin, upload.single("image"), async (req, res)
       });
     }
 
+    const deliveryChargeValue = delivery_charge === "" || delivery_charge == null
+      ? 0
+      : Number(delivery_charge);
+
+    if (!Number.isFinite(deliveryChargeValue) || deliveryChargeValue < 0 || deliveryChargeValue > 1000000) {
+      return res.status(400).json({
+        message: "Delivery charge must be a valid non-negative amount"
+      });
+    }
+
     const [result] = await db.query(
       `INSERT INTO products
        (name, description, price, image_data, image_type,
-        category, brand, model, sku, mrp, stock_quantity,
+        category, brand, model, sku, mrp, stock_quantity, delivery_charge,
         warranty, specifications)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
         description || "",
@@ -433,6 +531,7 @@ app.post("/api/products", requireAdmin, upload.single("image"), async (req, res)
         sku || null,
         mrpValue,
         stockValue,
+        deliveryChargeValue,
         warranty || null,
         JSON.stringify({ sections })
       ]
@@ -460,7 +559,7 @@ app.put("/api/products/:id", requireAdmin, upload.single("image"), async (req, r
   try {
     const {
       name, description, price, category, brand, model, sku,
-      mrp, stock_quantity, warranty
+      mrp, stock_quantity, warranty, delivery_charge
     } = req.body;
 
     if (
@@ -501,6 +600,16 @@ app.put("/api/products/:id", requireAdmin, upload.single("image"), async (req, r
       });
     }
 
+    const deliveryChargeValue = delivery_charge === "" || delivery_charge == null
+      ? 0
+      : Number(delivery_charge);
+
+    if (!Number.isFinite(deliveryChargeValue) || deliveryChargeValue < 0 || deliveryChargeValue > 1000000) {
+      return res.status(400).json({
+        message: "Delivery charge must be a valid non-negative amount"
+      });
+    }
+
     const [existing] = await db.query(
       "SELECT id FROM products WHERE id = ?",
       [req.params.id]
@@ -522,6 +631,7 @@ app.put("/api/products/:id", requireAdmin, upload.single("image"), async (req, r
       sku || null,
       mrpValue,
       stockValue,
+      deliveryChargeValue,
       warranty || null,
       JSON.stringify({ sections })
     ];
@@ -536,6 +646,7 @@ app.put("/api/products/:id", requireAdmin, upload.single("image"), async (req, r
       sku = ?,
       mrp = ?,
       stock_quantity = ?,
+      delivery_charge = ?,
       warranty = ?,
       specifications = ?`;
 
@@ -559,6 +670,35 @@ app.put("/api/products/:id", requireAdmin, upload.single("image"), async (req, r
     res.status(500).json({
       message: "Unable to update product"
     });
+  }
+});
+
+// ================= PUBLISH / UNPUBLISH PRODUCT =================
+
+app.patch("/api/products/:id/publish", requireAdmin, async (req, res) => {
+  const rawStatus = req.body.is_published;
+  if (![true, false, 0, 1].includes(rawStatus)) {
+    return res.status(400).json({ message: "Invalid publish status" });
+  }
+
+  try {
+    const [result] = await db.query(
+      "UPDATE products SET is_published = ? WHERE id = ?",
+      [rawStatus ? 1 : 0, req.params.id]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.json({
+      success: true,
+      is_published: rawStatus ? 1 : 0,
+      message: rawStatus ? "Product published successfully" : "Product unpublished successfully"
+    });
+  } catch (error) {
+    console.error("Publish product error:", error);
+    return res.status(500).json({ message: "Unable to update product visibility" });
   }
 });
 

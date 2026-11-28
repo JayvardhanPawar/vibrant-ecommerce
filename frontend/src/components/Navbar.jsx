@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   Link,
@@ -7,6 +8,8 @@ import {
 import {
   ShoppingBag,
   ShoppingCart,
+  Package,
+  PlusCircle,
   ShieldCheck,
   UserRound,
   LogOut,
@@ -19,6 +22,7 @@ import {
 import {
   clearCustomerSession,
   getCustomerToken,
+  customerApiRequest,
 } from "../services/customerApi";
 
 import { useCart } from "../context/CartContext";
@@ -71,6 +75,7 @@ const css = `
   width: 100%;
   box-sizing: border-box;
 }
+
 .navbar-main {
   max-width: 1440px;
   min-height: 76px;
@@ -90,6 +95,7 @@ const css = `
   text-decoration: none;
   flex-shrink: 0;
 }
+
 .brand-icon {
   width: 42px;
   height: 42px;
@@ -102,16 +108,19 @@ const css = `
   box-shadow: 0 10px 20px -10px rgba(225, 29, 46, 0.9);
   transition: transform 0.5s var(--ease), box-shadow 0.4s ease;
 }
+
 .brand:hover .brand-icon {
   transform: rotate(-10deg) scale(1.08);
   box-shadow: 0 14px 26px -10px rgba(225, 29, 46, 1);
 }
+
 .brand-name {
   font-size: 22px;
   font-weight: 850;
   letter-spacing: -0.8px;
   color: var(--red-3);
 }
+
 .brand-name span {
   color: var(--red-1);
 }
@@ -131,21 +140,26 @@ const css = `
   color: var(--red-1);
   transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.4s var(--ease);
 }
+
 .navbar-search:hover {
   border-color: #eba5ab;
 }
+
 .navbar-search:focus-within {
   border-color: var(--red-1);
   background: #ffffff;
   box-shadow: 0 0 0 4px rgba(225, 29, 46, 0.13), 0 14px 26px -16px rgba(225, 29, 46, 0.6);
 }
+
 .navbar-search svg {
   flex: none;
   transition: transform 0.4s var(--ease);
 }
+
 .navbar-search:focus-within svg {
   transform: scale(1.15) rotate(-8deg);
 }
+
 .navbar-search input,
 .mobile-search input {
   min-width: 0;
@@ -157,14 +171,17 @@ const css = `
   font-family: inherit;
   font-size: 13.5px;
 }
+
 .navbar-search input::placeholder,
 .mobile-search input::placeholder {
   color: #b48a8f;
 }
+
 .navbar-search input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
 }
+
 .navbar-search button,
 .mobile-search button {
   height: 36px;
@@ -179,11 +196,13 @@ const css = `
   cursor: pointer;
   transition: transform 0.3s var(--ease), box-shadow 0.3s ease;
 }
+
 .navbar-search button:hover,
 .mobile-search button:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 18px -8px rgba(179, 18, 31, 0.9);
 }
+
 .navbar-search button:active,
 .mobile-search button:active {
   transform: scale(0.96);
@@ -197,6 +216,7 @@ const css = `
   gap: 20px;
   flex-shrink: 0;
 }
+
 .nav-link {
   position: relative;
   display: inline-flex;
@@ -210,16 +230,20 @@ const css = `
   white-space: nowrap;
   transition: color 0.25s ease;
 }
+
 .nav-link:hover,
 .nav-link.active {
   color: var(--red-1);
 }
+
 .nav-link svg {
   transition: transform 0.4s var(--ease);
 }
+
 .nav-link:hover svg {
   transform: translateY(-2px) scale(1.1);
 }
+
 .nav-button {
   padding: 0;
   border: 0;
@@ -227,6 +251,7 @@ const css = `
   font-family: inherit;
   cursor: pointer;
 }
+
 .navbar-register {
   position: relative;
   overflow: hidden;
@@ -241,6 +266,7 @@ const css = `
   box-shadow: 0 12px 22px -12px rgba(179, 18, 31, 0.9);
   transition: transform 0.3s var(--ease), box-shadow 0.3s ease;
 }
+
 .navbar-register::after {
   content: "";
   position: absolute;
@@ -249,10 +275,12 @@ const css = `
   transform: translateX(-120%);
   animation: nav-sheen 5s ease-in-out infinite 2s;
 }
+
 .navbar-register:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 26px -12px rgba(179, 18, 31, 1);
 }
+
 .nav-admin-link {
   display: inline-flex;
   align-items: center;
@@ -268,6 +296,7 @@ const css = `
   white-space: nowrap;
   transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
+
 .nav-admin-link:hover {
   color: #ffffff;
   background: var(--red-1);
@@ -278,10 +307,12 @@ const css = `
 .cart-nav-link {
   gap: 8px;
 }
+
 .cart-icon-wrap {
   position: relative;
   display: inline-flex;
 }
+
 .cart-count {
   position: absolute;
   top: -9px;
@@ -306,6 +337,7 @@ const css = `
   background: #fff6f6;
   border-top: 1px solid #f7e1e3;
 }
+
 .navbar-nav-links {
   max-width: 1440px;
   min-height: 46px;
@@ -315,6 +347,7 @@ const css = `
   align-items: center;
   gap: 34px;
 }
+
 .navbar-nav-links > a,
 .nav-dropdown-trigger {
   position: relative;
@@ -329,6 +362,7 @@ const css = `
   white-space: nowrap;
   transition: color 0.25s ease;
 }
+
 /* animated underline */
 .navbar-nav-links > a::after,
 .nav-dropdown-trigger::after {
@@ -344,12 +378,14 @@ const css = `
   transform-origin: left;
   transition: transform 0.4s var(--ease);
 }
+
 .navbar-nav-links > a:hover,
 .navbar-nav-links > a.active,
 .nav-dropdown-trigger:hover,
 .nav-dropdown:hover .nav-dropdown-trigger {
   color: var(--red-1);
 }
+
 .navbar-nav-links > a:hover::after,
 .navbar-nav-links > a.active::after,
 .nav-dropdown:hover .nav-dropdown-trigger::after {
@@ -363,13 +399,16 @@ const css = `
   display: flex;
   align-items: center;
 }
+
 .nav-dropdown-trigger svg {
   transition: transform 0.4s var(--ease);
 }
+
 .nav-dropdown:hover .nav-dropdown-trigger svg,
 .nav-dropdown:focus-within .nav-dropdown-trigger svg {
   transform: rotate(180deg);
 }
+
 .nav-dropdown-menu {
   position: absolute;
   top: 100%;
@@ -388,6 +427,7 @@ const css = `
   transform: translateY(10px);
   transition: opacity 0.3s ease, transform 0.4s var(--ease), visibility 0s linear 0.3s;
 }
+
 .nav-dropdown:hover .nav-dropdown-menu,
 .nav-dropdown:focus-within .nav-dropdown-menu {
   opacity: 1;
@@ -395,6 +435,7 @@ const css = `
   transform: none;
   transition-delay: 0s;
 }
+
 .nav-dropdown-menu a {
   position: relative;
   padding: 11px 14px;
@@ -405,6 +446,7 @@ const css = `
   text-decoration: none;
   transition: color 0.25s ease, background 0.25s ease, padding-left 0.35s var(--ease);
 }
+
 .nav-dropdown-menu a:hover {
   color: var(--red-1);
   background: var(--red-soft);
@@ -425,19 +467,24 @@ const css = `
   cursor: pointer;
   transition: background 0.3s ease, color 0.3s ease, transform 0.3s var(--ease);
 }
+
 .mobile-menu-toggle:hover {
   background: var(--red-1);
   color: #ffffff;
 }
+
 .mobile-menu-toggle:active {
   transform: scale(0.92);
 }
+
 .mobile-menu-toggle svg {
   animation: icon-swap 0.35s var(--ease);
 }
+
 .mobile-menu {
   display: none;
 }
+
 .mobile-search {
   height: 46px;
   margin-bottom: 10px;
@@ -450,10 +497,12 @@ const css = `
   border-radius: 12px;
   color: var(--red-1);
 }
+
 .mobile-search:focus-within {
   border-color: var(--red-1);
   background: #ffffff;
 }
+
 .mobile-menu > a {
   min-height: 44px;
   padding: 11px 6px;
@@ -467,10 +516,12 @@ const css = `
   text-decoration: none;
   transition: color 0.25s ease, padding-left 0.35s var(--ease);
 }
+
 .mobile-menu > a:hover {
   color: var(--red-1);
   padding-left: 12px;
 }
+
 .mobile-menu > button {
   width: 100%;
   min-height: 44px;
@@ -499,26 +550,32 @@ const css = `
   from { transform: translateY(-100%); opacity: 0; }
   to   { transform: none; opacity: 1; }
 }
+
 @keyframes nav-line {
   to { background-position: -200% 0; }
 }
+
 @keyframes nav-sheen {
   0%, 60% { transform: translateX(-120%); }
   100%    { transform: translateX(120%); }
 }
+
 @keyframes cart-pop {
   0%   { transform: scale(0.4); }
   60%  { transform: scale(1.35); }
   100% { transform: scale(1); }
 }
+
 @keyframes icon-swap {
   from { transform: rotate(-90deg) scale(0.6); opacity: 0; }
   to   { transform: none; opacity: 1; }
 }
+
 @keyframes menu-down {
   from { opacity: 0; transform: translateY(-12px); }
   to   { opacity: 1; transform: none; }
 }
+
 @keyframes menu-item-in {
   from { opacity: 0; transform: translateX(-12px); }
   to   { opacity: 1; transform: none; }
@@ -531,12 +588,15 @@ const css = `
     padding-left: 3%;
     padding-right: 3%;
   }
+
   .navbar-actions { gap: 13px; }
+
   .navbar-nav-links {
     gap: 22px;
     padding-left: 3%;
     padding-right: 3%;
   }
+
   .brand-name { font-size: 20px; }
 }
 
@@ -547,10 +607,12 @@ const css = `
     padding: 0 17px;
     gap: 12px;
   }
+
   .brand-icon {
     width: 38px;
     height: 38px;
   }
+
   .brand-name { font-size: 19px; }
 
   .navbar-search,
@@ -558,10 +620,12 @@ const css = `
   .navbar-navigation {
     display: none;
   }
+
   .mobile-menu-toggle {
     display: inline-flex;
     flex-shrink: 0;
   }
+
   .mobile-menu {
     padding: 13px 18px 18px;
     display: flex;
@@ -573,9 +637,11 @@ const css = `
     overflow-y: auto;
     animation: menu-down 0.4s var(--ease) both;
   }
+
   .mobile-menu > * {
     animation: menu-item-in 0.45s var(--ease) both;
   }
+
   .mobile-menu > *:nth-child(1)  { animation-delay: 0.03s; }
   .mobile-menu > *:nth-child(2)  { animation-delay: 0.06s; }
   .mobile-menu > *:nth-child(3)  { animation-delay: 0.09s; }
@@ -599,6 +665,7 @@ const css = `
   outline: 2px solid var(--red-1);
   outline-offset: 3px;
 }
+
 @media (prefers-reduced-motion: reduce) {
   .navbar,
   .navbar *,
@@ -614,7 +681,7 @@ export default function Navbar({ admin = false }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { cartCount } = useCart();
+  const { cartCount, clearCart } = useCart();
 
   const [loggedIn, setLoggedIn] = useState(
     Boolean(getCustomerToken())
@@ -624,12 +691,35 @@ export default function Navbar({ admin = false }) {
   const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
-    setLoggedIn(Boolean(getCustomerToken()));
+    let mounted = true;
+
     setMobileMenuOpen(false);
+
+    if (!getCustomerToken()) {
+      setLoggedIn(false);
+      return () => { mounted = false; };
+    }
+
+    customerApiRequest("/customer/me")
+      .then((data) => {
+        if (!mounted) return;
+
+        localStorage.setItem("customer_data", JSON.stringify(data.customer));
+        setLoggedIn(true);
+      })
+      .catch(() => {
+        if (!mounted) return;
+
+        localStorage.removeItem("customer_data");
+        setLoggedIn(false);
+      });
+
+    return () => { mounted = false; };
   }, [location.pathname]);
 
   function handleLogout() {
     clearCustomerSession();
+    clearCart();
     setLoggedIn(false);
     setMobileMenuOpen(false);
     navigate("/");
@@ -690,10 +780,49 @@ export default function Navbar({ admin = false }) {
         {/* DESKTOP ACTIONS */}
         <div className="navbar-actions">
           {admin ? (
-            <Link to="/" className="nav-link">
-              <ShoppingBag size={17} />
-              View Website
-            </Link>
+            <>
+              <Link
+                to="/admin/products/add"
+                className={`nav-link ${
+                  location.pathname === "/admin/products/add" ? "active" : ""
+                }`}
+              >
+                <PlusCircle size={17} /> Add Product
+              </Link>
+
+              <Link
+                to="/admin/products"
+                className={`nav-link ${
+                  location.pathname === "/admin/products" ? "active" : ""
+                }`}
+              >
+                <Package size={17} /> View All Products
+              </Link>
+
+              {/* ORDERS LINK */}
+              <Link
+                to="/admin/orders"
+                className={`nav-link ${
+                  location.pathname.startsWith("/admin/orders") ? "active" : ""
+                }`}
+              >
+                <ShoppingBag size={17} /> Orders
+              </Link>
+
+              {/* DELIVERY STAFF LINK */}
+              <Link
+                to="/admin/delivery-staff"
+                className={`nav-link ${
+                  location.pathname === "/admin/delivery-staff" ? "active" : ""
+                }`}
+              >
+                <UserRound size={17} /> Delivery Staff
+              </Link>
+
+              <Link to="/" className="nav-link">
+                <ShoppingBag size={17} /> View Website
+              </Link>
+            </>
           ) : (
             <>
               <Link
@@ -704,11 +833,13 @@ export default function Navbar({ admin = false }) {
               >
                 <span className="cart-icon-wrap">
                   <ShoppingCart size={21} />
+
                   {/* key restarts the pop animation whenever the count changes */}
                   <span className="cart-count" key={cartCount}>
                     {cartCount}
                   </span>
                 </span>
+
                 <span>Cart</span>
               </Link>
 
@@ -745,6 +876,11 @@ export default function Navbar({ admin = false }) {
                 </>
               )}
 
+              <Link to="/delivery/login" className="nav-link">
+                <Package size={16} />
+                Delivery Login
+              </Link>
+
               <Link to="/admin/login" className="nav-admin-link">
                 <ShieldCheck size={16} />
                 Admin
@@ -754,17 +890,19 @@ export default function Navbar({ admin = false }) {
         </div>
 
         {/* MOBILE MENU BUTTON */}
-        {!admin && (
-          <button
-            type="button"
-            className="mobile-menu-toggle"
-            onClick={() => setMobileMenuOpen((current) => !current)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? <X size={25} key="x" /> : <Menu size={25} key="menu" />}
-          </button>
-        )}
+        <button
+          type="button"
+          className="mobile-menu-toggle"
+          onClick={() => setMobileMenuOpen((current) => !current)}
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? (
+            <X size={25} key="x" />
+          ) : (
+            <Menu size={25} key="menu" />
+          )}
+        </button>
       </div>
 
       {/* MAIN NAVIGATION */}
@@ -793,16 +931,31 @@ export default function Navbar({ admin = false }) {
               </Link>
 
               <div className="nav-dropdown-menu">
-                <Link to="/products?category=Laser Printers" onClick={closeMobileMenu}>
+                <Link
+                  to="/products?category=Laser Printers"
+                  onClick={closeMobileMenu}
+                >
                   Laser Printers
                 </Link>
-                <Link to="/products?category=Inkjet Printers" onClick={closeMobileMenu}>
+
+                <Link
+                  to="/products?category=Inkjet Printers"
+                  onClick={closeMobileMenu}
+                >
                   Inkjet Printers
                 </Link>
-                <Link to="/products?category=Barcode Printers" onClick={closeMobileMenu}>
+
+                <Link
+                  to="/products?category=Barcode Printers"
+                  onClick={closeMobileMenu}
+                >
                   Barcode Printers
                 </Link>
-                <Link to="/products?category=Multifunction Printers" onClick={closeMobileMenu}>
+
+                <Link
+                  to="/products?category=Multifunction Printers"
+                  onClick={closeMobileMenu}
+                >
                   Multifunction Printers
                 </Link>
               </div>
@@ -836,7 +989,36 @@ export default function Navbar({ admin = false }) {
         </div>
       )}
 
-      {/* MOBILE MENU */}
+      {/* ADMIN MOBILE MENU */}
+      {admin && mobileMenuOpen && (
+        <div className="mobile-menu">
+          <Link to="/admin/products/add" onClick={closeMobileMenu}>
+            <PlusCircle size={17} /> Add Product
+          </Link>
+
+          <Link to="/admin/products" onClick={closeMobileMenu}>
+            <Package size={17} /> View All Products
+          </Link>
+
+          <Link to="/admin/orders" onClick={closeMobileMenu}>
+            <ShoppingBag size={17} /> Orders
+          </Link>
+
+          <Link to="/admin/delivery-staff" onClick={closeMobileMenu}>
+            <UserRound size={17} /> Delivery Staff
+          </Link>
+
+          <Link to="/admin/cod-collections" onClick={closeMobileMenu}>
+            <Package size={17} /> COD Collections
+          </Link>
+
+          <Link to="/" onClick={closeMobileMenu}>
+            <ShoppingBag size={17} /> View Website
+          </Link>
+        </div>
+      )}
+
+      {/* CUSTOMER MOBILE MENU */}
       {!admin && mobileMenuOpen && (
         <div className="mobile-menu">
           <form className="mobile-search" onSubmit={handleSearch}>
@@ -854,20 +1036,61 @@ export default function Navbar({ admin = false }) {
 
           <Link to="/" onClick={closeMobileMenu}>Home</Link>
           <Link to="/products" onClick={closeMobileMenu}>All Products</Link>
-          <Link to="/products?category=Laser Printers" onClick={closeMobileMenu}>Laser Printers</Link>
-          <Link to="/products?category=Inkjet Printers" onClick={closeMobileMenu}>Inkjet Printers</Link>
-          <Link to="/products?category=Barcode Printers" onClick={closeMobileMenu}>Barcode Printers</Link>
-          <Link to="/products?category=Toners%20%26%20Cartridges" onClick={closeMobileMenu}>Toners & Cartridges</Link>
-          <Link to="/products?category=Accessories" onClick={closeMobileMenu}>Accessories</Link>
-          <Link to="/products?view=brands" onClick={closeMobileMenu}>Brands</Link>
+
+          <Link
+            to="/products?category=Laser Printers"
+            onClick={closeMobileMenu}
+          >
+            Laser Printers
+          </Link>
+
+          <Link
+            to="/products?category=Inkjet Printers"
+            onClick={closeMobileMenu}
+          >
+            Inkjet Printers
+          </Link>
+
+          <Link
+            to="/products?category=Barcode Printers"
+            onClick={closeMobileMenu}
+          >
+            Barcode Printers
+          </Link>
+
+          <Link
+            to="/products?category=Toners%20%26%20Cartridges"
+            onClick={closeMobileMenu}
+          >
+            Toners & Cartridges
+          </Link>
+
+          <Link
+            to="/products?category=Accessories"
+            onClick={closeMobileMenu}
+          >
+            Accessories
+          </Link>
+
+          <Link
+            to="/products?view=brands"
+            onClick={closeMobileMenu}
+          >
+            Brands
+          </Link>
+
           <Link to="/contact" onClick={closeMobileMenu}>Support</Link>
+
           <Link to="/cart" onClick={closeMobileMenu}>
             Shopping Cart ({cartCount})
           </Link>
 
           {loggedIn ? (
             <>
-              <Link to="/account" onClick={closeMobileMenu}>My Account</Link>
+              <Link to="/account" onClick={closeMobileMenu}>
+                My Account
+              </Link>
+
               <button type="button" onClick={handleLogout}>
                 <LogOut size={17} /> Logout
               </button>
@@ -875,9 +1098,15 @@ export default function Navbar({ admin = false }) {
           ) : (
             <>
               <Link to="/login" onClick={closeMobileMenu}>Login</Link>
-              <Link to="/register" onClick={closeMobileMenu}>Create Account</Link>
+              <Link to="/register" onClick={closeMobileMenu}>
+                Create Account
+              </Link>
             </>
           )}
+
+          <Link to="/delivery/login" onClick={closeMobileMenu}>
+            <Package size={17} /> Delivery Login
+          </Link>
 
           <Link to="/admin/login" onClick={closeMobileMenu}>
             <ShieldCheck size={16} /> Admin Login

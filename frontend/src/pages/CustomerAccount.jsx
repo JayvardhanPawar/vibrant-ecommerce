@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
@@ -16,7 +16,9 @@ import {
   MoreHorizontal,
   Trash2,
   Star,
-  Pencil
+  Pencil,
+  ShoppingBag,
+  ChevronRight
 } from "lucide-react";
 
 import Navbar from "../components/Navbar";
@@ -558,6 +560,116 @@ const css = `
   border-color: var(--red-3);
 }
 
+/* ---------- Order history ---------- */
+.customer-account-page .account-orders-list {
+  display: grid;
+  gap: 13px;
+}
+.customer-account-page .account-order-card {
+  padding: 17px;
+  background: #fff8f8;
+  border: 1px solid #f5d5d8;
+  border-radius: 16px;
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+.customer-account-page .account-order-card:hover {
+  border-color: #efadb4;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -20px rgba(179, 18, 31, 0.65);
+}
+.customer-account-page .account-order-top,
+.customer-account-page .account-order-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.customer-account-page .account-order-number {
+  color: var(--red-3);
+  font-size: 14px;
+  font-weight: 800;
+}
+.customer-account-page .account-order-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.customer-account-page .account-order-status {
+  padding: 6px 11px;
+  border-radius: 999px;
+  color: var(--red-2);
+  background: var(--red-soft);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+.customer-account-page .account-order-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.customer-account-page .account-order-summary small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.customer-account-page .account-order-summary strong {
+  color: var(--red-3);
+  font-size: 14px;
+}
+.customer-account-page .account-order-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--red-2);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.customer-account-page .account-order-link:hover {
+  color: var(--red-1);
+}
+.customer-account-page .account-orders-empty {
+  padding: 28px 18px;
+  text-align: center;
+  color: var(--muted);
+  background: #fff9f9;
+  border: 1.5px dashed #eba5ab;
+  border-radius: 18px;
+}
+.customer-account-page .account-orders-empty svg {
+  color: var(--red-1);
+}
+.customer-account-page .account-orders-empty h3 {
+  margin: 10px 0 5px;
+  color: var(--red-2);
+}
+.customer-account-page .account-orders-empty p {
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+.customer-account-page .account-order-notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  color: #75521b;
+  background: #fff8e8;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.customer-account-page .account-order-error {
+  margin: 0;
+  color: var(--red-2);
+  font-size: 13px;
+}
+@media (max-width: 520px) {
+  .customer-account-page .account-order-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* ---------- Logout ---------- */
 .customer-account-page .customer-logout-btn {
   justify-self: start;
@@ -661,6 +773,14 @@ const css = `
 }
 `;
 
+const formatOrderMoney = (value) =>
+  value == null
+    ? "Awaiting quote"
+    : `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+const formatOrderStatus = (value) =>
+  String(value || "pending").replaceAll("_", " ");
+
 const emptyAddress = {
   full_name: "",
   mobile: "",
@@ -678,6 +798,9 @@ export default function CustomerAccount() {
 
   const [customer, setCustomer] = useState(null);
   const [addresses, setAddresses] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState("");
 
   const [profileForm, setProfileForm] = useState({
     full_name: "",
@@ -706,6 +829,15 @@ export default function CustomerAccount() {
 
       setCustomer(profileData.customer);
       setAddresses(addressData.addresses || []);
+
+      // Load order history independently so an order API issue does not
+      // prevent the profile and saved addresses from appearing.
+      setOrdersLoading(true);
+      setOrdersError("");
+      customerApiRequest("/orders/mine")
+        .then((ordersData) => setOrders(ordersData.orders || []))
+        .catch((orderError) => setOrdersError(orderError.message || "Unable to load orders."))
+        .finally(() => setOrdersLoading(false));
 
       setProfileForm({
         full_name: profileData.customer.full_name || "",
@@ -1087,6 +1219,98 @@ export default function CustomerAccount() {
                   </button>
                 </div>
               </form>
+            )}
+          </section>
+
+          {/* Order history */}
+          <section className="customer-section-card">
+            <div className="customer-section-heading">
+              <div>
+                <h2><ShoppingBag size={20} /> My Orders</h2>
+                <p>
+                  {ordersLoading
+                    ? "Loading your recent orders..."
+                    : `${orders.length} order(s) placed`}
+                </p>
+              </div>
+
+              <Link to="/account/orders" className="account-outline-btn" style={{ textDecoration: "none" }}>
+                View All Orders <ChevronRight size={16} />
+              </Link>
+            </div>
+
+            {ordersLoading ? (
+              <p style={{ color: "var(--muted)", margin: 0 }}>Loading your order history...</p>
+            ) : ordersError ? (
+              <p className="account-order-error" role="alert">{ordersError}</p>
+            ) : orders.length === 0 ? (
+              <div className="account-orders-empty">
+                <ShoppingBag size={32} />
+                <h3>No orders yet</h3>
+                <p>Your placed orders and delivery updates will appear here.</p>
+                <Link to="/products" className="account-primary-btn" style={{ textDecoration: "none" }}>
+                  Start Shopping
+                </Link>
+              </div>
+            ) : (
+              <div className="account-orders-list">
+                {orders.slice(0, 3).map((order) => (
+                  <article className="account-order-card" key={order.id}>
+                    <div className="account-order-top">
+                      <div>
+                        <div className="account-order-number">{order.order_number}</div>
+                        <div className="account-order-meta">
+                          Placed{" "}
+                          {order.created_at
+                            ? new Date(order.created_at).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric"
+                              })
+                            : "Date unavailable"}
+                        </div>
+                      </div>
+                      <span className="account-order-status">
+                        {formatOrderStatus(order.order_status)}
+                      </span>
+                    </div>
+
+                    <div className="account-order-summary">
+                      <div>
+                        <small>Items subtotal</small>
+                        <strong>{formatOrderMoney(order.subtotal)}</strong>
+                      </div>
+                      <div>
+                        <small>Delivery charge</small>
+                        <strong>
+                          {order.shipping_status === "quoted"
+                            ? formatOrderMoney(order.shipping_charge)
+                            : "Awaiting quote"}
+                        </strong>
+                      </div>
+                      <div>
+                        <small>Final total</small>
+                        <strong>{formatOrderMoney(order.total_amount)}</strong>
+                      </div>
+                    </div>
+
+                    {order.shipping_status === "quoted" && order.quote_response === "pending" && (
+                      <p className="account-order-notice">
+                        Shipping quote received. Open the order to approve or reject it.
+                      </p>
+                    )}
+
+                    <div className="account-order-bottom" style={{ marginTop: 14 }}>
+                      <span className="account-order-meta">
+                        {String(order.payment_method || "").toUpperCase()} · {formatOrderStatus(order.payment_status)}
+                      </span>
+                      <Link to={`/account/orders/${order.id}`} className="account-order-link">
+                        View Details <ChevronRight size={16} />
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
             )}
           </section>
 

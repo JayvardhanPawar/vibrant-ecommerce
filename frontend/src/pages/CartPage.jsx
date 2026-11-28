@@ -680,8 +680,8 @@ export default function CartPage() {
                 during checkout.
               </p>
 
-              <Link to="/" className="cart-checkout-btn">
-                Continue Shopping
+              <Link to="/checkout" className="cart-checkout-btn">
+                Proceed to Checkout
               </Link>
             </aside>
           </div>

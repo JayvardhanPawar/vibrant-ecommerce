@@ -108,4 +108,4 @@ export default function HeroSection({ onChooseCategory }) {
       </div>
     </section>
   );
-}
+} 

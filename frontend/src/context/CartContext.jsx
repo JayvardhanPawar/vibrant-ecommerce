@@ -86,6 +86,7 @@ export function CartProvider({ children }) {
 
   function clearCart() {
     setCart([]);
+    localStorage.removeItem("printstore_cart");
   }
 
   const cartCount = cart.reduce(

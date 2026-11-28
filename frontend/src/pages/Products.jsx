@@ -755,6 +755,10 @@ function getProductText(product) {
     .toLowerCase();
 }
 
+function normalizeFilterText(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function getUniqueValues(products, field) {
   return [
     ...new Set(
@@ -885,25 +889,25 @@ export default function Products() {
 
     if (technology) {
       result = result.filter((product) =>
-        getProductText(product).includes(technology.toLowerCase())
+        normalizeFilterText(getProductText(product)).includes(normalizeFilterText(technology))
       );
     }
 
     if (printerType) {
       result = result.filter((product) =>
-        getProductText(product).includes(printerType.toLowerCase())
+        normalizeFilterText(getProductText(product)).includes(normalizeFilterText(printerType))
       );
     }
 
     if (format) {
       result = result.filter((product) =>
-        getProductText(product).includes(format.toLowerCase())
+        normalizeFilterText(getProductText(product)).includes(normalizeFilterText(format))
       );
     }
 
     if (functionType) {
       result = result.filter((product) =>
-        getProductText(product).includes(functionType.toLowerCase())
+        normalizeFilterText(getProductText(product)).includes(normalizeFilterText(functionType))
       );
     }
 

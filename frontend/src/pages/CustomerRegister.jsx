@@ -380,7 +380,7 @@ export default function CustomerRegister() {
         body: JSON.stringify(form)
       });
 
-      saveCustomerSession(data.token, data.customer);
+      saveCustomerSession(null, data.customer);
       navigate("/account");
     } catch (err) {
       setError(err.message);

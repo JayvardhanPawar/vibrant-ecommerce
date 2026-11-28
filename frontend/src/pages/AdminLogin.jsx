@@ -367,7 +367,7 @@ export default function AdminLogin() {
         body: JSON.stringify({ username, password }),
       });
 
-      localStorage.setItem("admin_token", data.token);
+      localStorage.setItem("admin_session_active", "1");
       navigate("/admin/dashboard");
     } catch (err) {
       setError(err.message);

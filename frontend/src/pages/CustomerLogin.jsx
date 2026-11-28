@@ -1,8 +1,12 @@
+
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock, LogIn } from "lucide-react";
 import Navbar from "../components/Navbar";
-import { customerApiRequest, saveCustomerSession } from "../services/customerApi";
+import {
+  customerApiRequest,
+  saveCustomerSession
+} from "../services/customerApi";
 
 const css = `
 .customer-auth-page {
@@ -26,6 +30,7 @@ const css = `
   background: linear-gradient(180deg, #fff6f6 0%, #ffffff 100%);
   color: var(--ink);
 }
+
 .customer-auth-page *,
 .customer-auth-page *::before,
 .customer-auth-page *::after {
@@ -41,6 +46,7 @@ const css = `
   border-radius: 50%;
   filter: blur(60px);
 }
+
 .customer-auth-page::before {
   width: 360px;
   height: 360px;
@@ -49,6 +55,7 @@ const css = `
   background: rgba(225, 29, 46, 0.22);
   animation: au-orb 14s ease-in-out infinite;
 }
+
 .customer-auth-page::after {
   width: 320px;
   height: 320px;
@@ -71,6 +78,7 @@ const css = `
   box-shadow: 0 40px 70px -40px rgba(179, 18, 31, 0.7);
   animation: au-card-in 0.9s var(--ease) both;
 }
+
 .customer-auth-page .customer-auth-icon {
   position: relative;
   width: 62px;
@@ -85,6 +93,7 @@ const css = `
   box-shadow: 0 16px 28px -12px rgba(179, 18, 31, 0.9);
   animation: au-float 4.5s ease-in-out infinite;
 }
+
 .customer-auth-page .customer-auth-icon::after {
   content: "";
   position: absolute;
@@ -93,6 +102,7 @@ const css = `
   border: 2px solid var(--red-1);
   animation: au-ring 2.6s ease-out infinite;
 }
+
 .customer-auth-page .customer-auth-card h1 {
   margin: 0 0 8px;
   color: var(--red-3);
@@ -101,6 +111,7 @@ const css = `
   font-weight: 800;
   letter-spacing: -0.03em;
 }
+
 .customer-auth-page .customer-auth-subtitle {
   margin: 0 0 26px;
   color: var(--muted);
@@ -114,17 +125,50 @@ const css = `
   opacity: 0;
   animation: au-rise 0.6s var(--ease) forwards;
 }
-.customer-auth-page form > *:nth-child(1)  { animation-delay: 0.20s; }
-.customer-auth-page form > *:nth-child(2)  { animation-delay: 0.26s; }
-.customer-auth-page form > *:nth-child(3)  { animation-delay: 0.32s; }
-.customer-auth-page form > *:nth-child(4)  { animation-delay: 0.38s; }
-.customer-auth-page form > *:nth-child(5)  { animation-delay: 0.44s; }
-.customer-auth-page form > *:nth-child(6)  { animation-delay: 0.50s; }
-.customer-auth-page form > *:nth-child(7)  { animation-delay: 0.56s; }
-.customer-auth-page form > *:nth-child(8)  { animation-delay: 0.62s; }
-.customer-auth-page form > *:nth-child(9)  { animation-delay: 0.68s; }
-.customer-auth-page form > *:nth-child(10) { animation-delay: 0.74s; }
-.customer-auth-page form > *:nth-child(n+11) { animation-delay: 0.8s; }
+
+.customer-auth-page form > *:nth-child(1) {
+  animation-delay: 0.20s;
+}
+
+.customer-auth-page form > *:nth-child(2) {
+  animation-delay: 0.26s;
+}
+
+.customer-auth-page form > *:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.customer-auth-page form > *:nth-child(4) {
+  animation-delay: 0.38s;
+}
+
+.customer-auth-page form > *:nth-child(5) {
+  animation-delay: 0.44s;
+}
+
+.customer-auth-page form > *:nth-child(6) {
+  animation-delay: 0.50s;
+}
+
+.customer-auth-page form > *:nth-child(7) {
+  animation-delay: 0.56s;
+}
+
+.customer-auth-page form > *:nth-child(8) {
+  animation-delay: 0.62s;
+}
+
+.customer-auth-page form > *:nth-child(9) {
+  animation-delay: 0.68s;
+}
+
+.customer-auth-page form > *:nth-child(10) {
+  animation-delay: 0.74s;
+}
+
+.customer-auth-page form > *:nth-child(n+11) {
+  animation-delay: 0.8s;
+}
 
 .customer-auth-page form label {
   display: block;
@@ -133,10 +177,12 @@ const css = `
   font-size: 13px;
   font-weight: 750;
 }
+
 .customer-auth-page form label span {
   color: var(--muted);
   font-weight: 500;
 }
+
 .customer-auth-page .customer-input {
   display: flex;
   align-items: center;
@@ -147,25 +193,35 @@ const css = `
   background: #fff6f6;
   border: 1.5px solid var(--red-line);
   border-radius: 14px;
-  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.4s var(--ease),
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.4s var(--ease),
     color 0.3s ease;
 }
+
 .customer-auth-page .customer-input svg {
   flex: none;
   transition: transform 0.4s var(--ease);
 }
+
 .customer-auth-page .customer-input:hover {
   border-color: #eba5ab;
 }
+
 .customer-auth-page .customer-input:focus-within {
   color: var(--red-1);
   background: #ffffff;
   border-color: var(--red-1);
-  box-shadow: 0 0 0 4px rgba(225, 29, 46, 0.13), 0 14px 26px -18px rgba(225, 29, 46, 0.7);
+  box-shadow:
+    0 0 0 4px rgba(225, 29, 46, 0.13),
+    0 14px 26px -18px rgba(225, 29, 46, 0.7);
 }
+
 .customer-auth-page .customer-input:focus-within svg {
   transform: scale(1.15) rotate(-8deg);
 }
+
 .customer-auth-page .customer-input input {
   flex: 1;
   min-width: 0;
@@ -179,6 +235,7 @@ const css = `
   outline: none;
   box-shadow: none;
 }
+
 .customer-auth-page .customer-input input::placeholder {
   color: #b48a8f;
 }
@@ -216,27 +273,40 @@ const css = `
   font-size: 15px;
   font-weight: 750;
   cursor: pointer;
-  transition: transform 0.3s var(--ease), box-shadow 0.3s ease, opacity 0.3s ease;
+  transition:
+    transform 0.3s var(--ease),
+    box-shadow 0.3s ease,
+    opacity 0.3s ease;
 }
+
 .customer-auth-page .customer-primary-btn::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 70%
+  );
   transform: translateX(-120%);
   animation: au-sheen 4.5s ease-in-out infinite 1.5s;
 }
+
 .customer-auth-page .customer-primary-btn:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow: 0 22px 34px -14px rgba(179, 18, 31, 1);
 }
+
 .customer-auth-page .customer-primary-btn:active:not(:disabled) {
   transform: scale(0.98);
 }
+
 .customer-auth-page .customer-primary-btn:disabled {
   opacity: 0.85;
   cursor: progress;
 }
+
 .customer-auth-page .customer-primary-btn:disabled::before {
   content: "";
   width: 16px;
@@ -254,12 +324,14 @@ const css = `
   text-align: center;
   font-size: 13.5px;
 }
+
 .customer-auth-page .customer-auth-footer a {
   position: relative;
   color: var(--red-1);
   font-weight: 750;
   text-decoration: none;
 }
+
 .customer-auth-page .customer-auth-footer a::after {
   content: "";
   position: absolute;
@@ -272,43 +344,93 @@ const css = `
   transform-origin: left;
   transition: transform 0.4s var(--ease);
 }
+
 .customer-auth-page .customer-auth-footer a:hover::after {
   transform: scaleX(1);
 }
 
 /* ---------- Keyframes ---------- */
 @keyframes au-card-in {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
+
 @keyframes au-rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
+
 @keyframes au-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
+
 @keyframes au-ring {
-  0%   { opacity: 0.6; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.5); }
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
 }
+
 @keyframes au-orb {
-  0%, 100% { transform: translate(0, 0); }
-  50%      { transform: translate(30px, 24px); }
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(30px, 24px);
+  }
 }
+
 @keyframes au-sheen {
-  0%, 60% { transform: translateX(-120%); }
-  100%    { transform: translateX(120%); }
+  0%, 60% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
 }
+
 @keyframes au-shake {
-  0%   { opacity: 0; transform: translateX(-8px); }
-  30%  { opacity: 1; transform: translateX(7px); }
-  60%  { transform: translateX(-4px); }
-  100% { transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  100% {
+    transform: none;
+  }
 }
+
 @keyframes au-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .customer-auth-page a:focus-visible,
@@ -322,6 +444,7 @@ const css = `
     padding: 28px 14px 48px;
     align-items: flex-start;
   }
+
   .customer-auth-page .customer-auth-card {
     padding: 30px 22px 26px;
     border-radius: 24px;
@@ -335,6 +458,7 @@ const css = `
     animation: none !important;
     transition: none !important;
   }
+
   .customer-auth-page form > * {
     opacity: 1;
   }
@@ -343,6 +467,7 @@ const css = `
 
 export default function CustomerLogin() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -360,10 +485,26 @@ export default function CustomerLogin() {
         body: JSON.stringify({ email, password })
       });
 
+      // Verify that the login API returned the required data.
+      if (!data.success || !data.token || !data.customer) {
+        throw new Error(
+          "Login response is missing authentication details"
+        );
+      }
+
+      // Save the actual JWT token and customer profile.
       saveCustomerSession(data.token, data.customer);
-      navigate("/");
+
+      const redirect = searchParams.get("redirect");
+
+      navigate(
+        redirect && redirect.startsWith("/")
+          ? redirect
+          : "/"
+      );
+
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Unable to log in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -372,7 +513,9 @@ export default function CustomerLogin() {
   return (
     <>
       <style>{css}</style>
+
       <Navbar />
+
       <main className="customer-auth-page">
         <section className="customer-auth-card">
           <div className="customer-auth-icon">
@@ -380,44 +523,60 @@ export default function CustomerLogin() {
           </div>
 
           <h1>Welcome back</h1>
+
           <p className="customer-auth-subtitle">
             Login to your customer account.
           </p>
 
           <form onSubmit={handleSubmit}>
             <label>Email address</label>
+
             <div className="customer-input">
               <Mail size={18} />
+
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
                 required
               />
             </div>
 
             <label>Password</label>
+
             <div className="customer-input">
               <Lock size={18} />
+
               <input
                 type="password"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
                 required
               />
             </div>
 
-            {error && <p className="error-message">{error}</p>}
+            {error && (
+              <p className="error-message" role="alert">
+                {error}
+              </p>
+            )}
 
-            <button className="customer-primary-btn" disabled={loading}>
+            <button
+              type="submit"
+              className="customer-primary-btn"
+              disabled={loading}
+            >
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
           <p className="customer-auth-footer">
-            New customer? <Link to="/register">Create an account</Link>
+            New customer?{" "}
+            <Link to="/register">Create an account</Link>
           </p>
         </section>
       </main>
